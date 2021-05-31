@@ -1,0 +1,16 @@
+[package]
+name = "evg-patch-history"
+version = "0.1.0"
+authors = ["David Bradford <david.bradford@mongodb.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = "0.4"
+csv = { version = "1" }
+evg-api-rs = { git = "https://github.com/dbradf/evg-api-rs.git" }
+futures = "0.3"
+graphql_client = { version = "0.9" }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }

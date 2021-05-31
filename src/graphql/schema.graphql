@@ -1,0 +1,1031 @@
+type AbortInfo {
+  user: String!
+  taskID: String!
+  taskDisplayName: String!
+  buildVariantDisplayName: String!
+  newVersion: String!
+  prClosed: Boolean!
+}
+
+type Annotation {
+  id: String!
+  taskId: String!
+  taskExecution: Int!
+  note: Note
+  issues: [IssueLink]
+  suspectedIssues: [IssueLink]
+  createdIssues: [IssueLink]
+  webhookConfigured: Boolean!
+}
+
+type AWSConfig {
+  maxVolumeSizePerUser: Int
+}
+
+type BaseTaskInfo {
+  id: String
+  status: String
+}
+
+type BaseTaskMetadata {
+  baseTaskDuration: Duration
+  baseTaskLink: String!
+}
+
+type BaseTaskResult {
+  id: ID!
+  status: String!
+}
+
+type Build {
+  id: String!
+  buildVariant: String!
+  status: String!
+  predictedMakespan: Duration!
+  actualMakespan: Duration!
+}
+
+type BuildBaron {
+  searchReturnInfo: SearchReturnInfo
+  buildBaronConfigured: Boolean!
+}
+
+input BuildVariantOptions {
+  variants: [String!]
+  tasks: [String!]
+  statuses: [String!]
+}
+
+type ClientBinary {
+  arch: String
+  os: String
+  url: String
+  displayName: String
+}
+
+type ClientConfig {
+  clientBinaries: [ClientBinary!]
+  latestRevision: String
+}
+
+type CloudProviderConfig {
+  aws: AWSConfig
+}
+
+type CommitQueue {
+  projectId: String
+  message: String
+  owner: String
+  repo: String
+  queue: [CommitQueueItem!]
+}
+
+type CommitQueueItem {
+  issue: String
+  version: String
+  enqueueTime: Time
+  patch: Patch
+  source: String
+  modules: [Module!]
+}
+
+type Dependency {
+  name: String!
+  metStatus: MetStatus!
+  requiredStatus: RequiredStatus!
+  buildVariant: String!
+  uiLink: String!
+}
+
+input DisplayTask {
+  Name: String!
+  ExecTasks: [String!]!
+}
+
+type Distro {
+  name: String
+  userSpawnAllowed: Boolean
+  workDir: String
+  user: String
+  isVirtualWorkStation: Boolean!
+}
+
+type DistroInfo {
+  id: String
+  workDir: String
+  isVirtualWorkStation: Boolean
+  user: String
+  isWindows: Boolean
+  bootstrapMethod: String
+}
+
+scalar Duration
+
+input EditSpawnHostInput {
+  hostId: String!
+  displayName: String
+  expiration: Time
+  noExpiration: Boolean
+  instanceType: String
+  addedInstanceTags: [InstanceTagInput!]
+  deletedInstanceTags: [InstanceTagInput!]
+  volume: String
+  servicePassword: String
+}
+
+type File {
+  name: String!
+  link: String!
+  visibility: String!
+}
+
+type FileDiff {
+  fileName: String!
+  additions: Int!
+  deletions: Int!
+  diffLink: String!
+  description: String!
+}
+
+type GithubUser {
+  uid: Int
+  lastKnownAs: String
+}
+
+input GithubUserInput {
+  lastKnownAs: String
+}
+
+type GroupedBuildVariant {
+  variant: String!
+  displayName: String!
+  tasks: [Task]
+}
+
+type GroupedFiles {
+  taskName: String
+  files: [File!]
+}
+
+type GroupedProjects {
+  name: String!
+  projects: [Project!]!
+}
+
+type Host {
+  homeVolume: Volume
+  id: ID!
+  hostUrl: String!
+  tag: String!
+  distroId: String
+  status: String!
+  runningTask: TaskInfo
+  totalIdleTime: Duration
+  uptime: Time
+  elapsed: Time
+  startedBy: String!
+  provider: String!
+  lastCommunicationTime: Time
+  noExpiration: Boolean!
+  instanceType: String
+  homeVolumeID: String
+  volumes: [Volume!]!
+  user: String
+  distro: DistroInfo
+  availabilityZone: String
+  instanceTags: [InstanceTag!]!
+  expiration: Time
+  displayName: String
+}
+
+type HostEventLogData {
+  agentRevision: String!
+  agentBuild: String!
+  jasperRevision: String!
+  oldStatus: String!
+  newStatus: String!
+  logs: String!
+  hostname: String!
+  provisioningMethod: String!
+  taskId: String!
+  taskPid: String!
+  taskStatus: String!
+  execution: String!
+  monitorOp: String!
+  user: String!
+  successful: Boolean!
+  duration: Duration!
+}
+
+type HostEventLogEntry {
+  id: String!
+  resourceType: String!
+  processedAt: Time!
+  timestamp: Time
+  eventType: String
+  data: HostEventLogData!
+  resourceId: String!
+}
+
+type HostEvents {
+  eventLogEntries: [HostEventLogEntry!]!
+  count: Int!
+}
+
+enum HostSortBy {
+  ID
+  DISTRO
+  CURRENT_TASK
+  STATUS
+  ELAPSED
+  UPTIME
+  IDLE_TIME
+  OWNER
+}
+
+type HostsResponse {
+  filteredHostsCount: Int
+  totalHostsCount: Int!
+  hosts: [Host!]!
+}
+
+type InstanceTag {
+  key: String!
+  value: String!
+  canBeModified: Boolean!
+}
+
+input InstanceTagInput {
+  key: String!
+  value: String!
+}
+
+type IssueLink {
+  issueKey: String
+  url: String
+  source: Source
+  jiraTicket: JiraTicket
+}
+
+input IssueLinkInput {
+  url: String!
+  issueKey: String!
+}
+
+type JiraConfig {
+  host: String
+}
+
+type JiraStatus {
+  id: String!
+  name: String!
+}
+
+type JiraTicket {
+  key: String!
+  fields: TicketFields!
+}
+
+type LogMessage {
+  type: String
+  severity: String
+  message: String
+  timestamp: Time
+  version: Int
+}
+
+type MainlineCommits {
+  nextPageOrderNumber: Int
+  versions: [MainlineCommitVersion!]!
+}
+
+input MainlineCommitsOptions {
+  projectID: String!
+  limit: Int = 7
+  skipOrderNumber: Int = 0
+}
+
+type MainlineCommitVersion {
+  version: Version
+  rolledUpVersions: [Version!]
+}
+
+enum MetStatus {
+  UNMET
+  MET
+  PENDING
+}
+
+type Module {
+  module: String
+  issue: String
+}
+
+type ModuleCodeChange {
+  branchName: String!
+  htmlLink: String!
+  rawLink: String!
+  fileDiffs: [FileDiff!]!
+}
+
+type Mutation {
+  addFavoriteProject(identifier: String!): Project!
+  removeFavoriteProject(identifier: String!): Project!
+  schedulePatch(patchId: String!, configure: PatchConfigure!): Patch!
+  schedulePatchTasks(patchId: String!): String
+  unschedulePatchTasks(patchId: String!, abort: Boolean!): String
+  restartPatch(patchId: String!, abort: Boolean!, taskIds: [String!]!): String
+  enqueuePatch(patchId: String!, commitMessage: String): Patch!
+  setPatchPriority(patchId: String!, priority: Int!): String
+  scheduleTask(taskId: String!): Task!
+  unscheduleTask(taskId: String!): Task!
+  abortTask(taskId: String!): Task!
+  setTaskPriority(taskId: String!, priority: Int!): Task!
+  restartTask(taskId: String!): Task!
+  saveSubscription(subscription: SubscriptionInput!): Boolean!
+  editAnnotationNote(
+    taskId: String!
+    execution: Int!
+    originalMessage: String!
+    newMessage: String!
+  ): Boolean!
+  moveAnnotationIssue(
+    taskId: String!
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
+  addAnnotationIssue(
+    taskId: String!
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
+  removeAnnotationIssue(
+    taskId: String!
+    execution: Int!
+    apiIssue: IssueLinkInput!
+    isIssue: Boolean!
+  ): Boolean!
+  removeItemFromCommitQueue(commitQueueId: String!, issue: String!): String
+  updateUserSettings(userSettings: UserSettingsInput): Boolean!
+  restartJasper(hostIds: [String!]!): Int!
+  updateHostStatus(
+    hostIds: [String!]!
+    status: String!
+    notes: String = ""
+  ): Int!
+  createPublicKey(publicKeyInput: PublicKeyInput!): [PublicKey!]!
+  spawnHost(spawnHostInput: SpawnHostInput): Host!
+  spawnVolume(spawnVolumeInput: SpawnVolumeInput!): Boolean!
+  updateVolume(updateVolumeInput: UpdateVolumeInput!): Boolean!
+  updateSpawnHostStatus(hostId: String!, action: SpawnHostStatusActions!): Host!
+  removePublicKey(keyName: String!): [PublicKey!]!
+  updatePublicKey(
+    targetKeyName: String!
+    updateInfo: PublicKeyInput!
+  ): [PublicKey!]!
+  attachVolumeToHost(volumeAndHost: VolumeHost!): Boolean!
+  detachVolumeFromHost(volumeId: String!): Boolean!
+  removeVolume(volumeId: String!): Boolean!
+  editSpawnHost(spawnHost: EditSpawnHostInput): Host!
+  bbCreateTicket(taskId: String!, execution: Int): Boolean!
+  clearMySubscriptions: Int!
+}
+
+type Note {
+  message: String!
+  source: Source!
+}
+
+type Notifications {
+  buildBreak: String
+  patchFinish: String
+  patchFirstFailure: String
+  spawnHostExpiration: String
+  spawnHostOutcome: String
+  commitQueue: String
+}
+
+input NotificationsInput {
+  buildBreak: String
+  patchFinish: String
+  patchFirstFailure: String
+  spawnHostExpiration: String
+  spawnHostOutcome: String
+  commitQueue: String
+}
+
+type OomTrackerInfo {
+  detected: Boolean!
+  pids: [Int]
+}
+
+type Parameter {
+  key: String!
+  value: String!
+}
+
+input ParameterInput {
+  key: String!
+  value: String!
+}
+
+type Patch {
+  createTime: Time
+  id: ID!
+  description: String!
+  projectID: String!
+  projectIdentifier: String!
+  githash: String!
+  patchNumber: Int!
+  author: String!
+  version: String!
+  status: String!
+  variants: [String!]!
+  tasks: [String!]!
+  variantsTasks: [VariantTask]!
+  activated: Boolean!
+  alias: String
+  duration: PatchDuration
+  time: PatchTime
+  taskCount: Int
+  baseVersionID: String
+  parameters: [Parameter!]!
+  moduleCodeChanges: [ModuleCodeChange!]!
+  project: PatchProject
+  builds: [Build!]!
+  commitQueuePosition: Int
+  taskStatuses: [String!]!
+  baseTaskStatuses: [String!]!
+  canEnqueueToCommitQueue: Boolean!
+}
+
+input PatchConfigure {
+  description: String!
+  variantsTasks: [VariantTasks!]!
+  parameters: [ParameterInput]
+}
+
+type PatchDuration {
+  makespan: String
+  timeTaken: String
+  time: PatchTime
+}
+
+type Patches {
+  patches: [Patch!]!
+  filteredPatchCount: Int!
+}
+
+input PatchesInput {
+  limit: Int! = 0
+  page: Int! = 0
+  patchName: String! = ""
+  statuses: [String!]! = []
+  includeCommitQueue: Boolean! = false
+}
+
+type PatchMetadata {
+  author: String!
+  patchID: String!
+}
+
+type PatchProject {
+  variants: [ProjectBuildVariant!]!
+}
+
+type PatchTasks {
+  tasks: [Task!]!
+  count: Int!
+}
+
+type PatchTime {
+  started: String
+  finished: String
+  submittedAt: String!
+}
+
+type Project {
+  displayName: String!
+  id: String!
+  identifier: String!
+  isFavorite: Boolean!
+  owner: String!
+  patches(patchesInput: PatchesInput!): Patches!
+  repo: String!
+  spawnHostScriptPath: String!
+}
+
+type ProjectBuildVariant {
+  name: String!
+  displayName: String!
+  tasks: [String!]!
+}
+
+type PublicKey {
+  name: String!
+  key: String!
+}
+
+input PublicKeyInput {
+  name: String!
+  key: String!
+}
+
+type Query {
+  userPatches(
+    limit: Int = 0
+    page: Int = 0
+    patchName: String = ""
+    statuses: [String!] = []
+    userId: String
+    includeCommitQueue: Boolean = false
+  ): UserPatches!
+  task(taskId: String!, execution: Int): Task
+  taskAllExecutions(taskId: String!): [Task!]!
+  patch(id: String!): Patch!
+  projects: [GroupedProjects]!
+  project(projectId: String!): Project!
+  patchTasks(
+    patchId: String!
+    sorts: [SortOrder!]
+    page: Int = 0
+    limit: Int = 0
+    statuses: [String!] = []
+    baseStatuses: [String!] = []
+    variant: String
+    taskName: String
+  ): PatchTasks!
+  taskTests(
+    taskId: String!
+    execution: Int
+    sortCategory: TestSortCategory = TEST_NAME
+    sortDirection: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 0
+    testName: String = ""
+    statuses: [String!]! = []
+  ): TaskTestResult!
+  taskFiles(taskId: String!, execution: Int): TaskFiles!
+  user(userId: String): User!
+  taskLogs(taskId: String!, execution: Int): RecentTaskLogs!
+  patchBuildVariants(patchId: String!): [GroupedBuildVariant!]!
+  commitQueue(id: String!): CommitQueue!
+  userSettings: UserSettings
+  spruceConfig: SpruceConfig
+  awsRegions: [String!]
+  subnetAvailabilityZones: [String!]!
+  userConfig: UserConfig
+  clientConfig: ClientConfig
+  host(hostId: String!): Host
+  hostEvents(
+    hostId: String!
+    hostTag: String = ""
+    limit: Int = 0
+    page: Int = 0
+  ): HostEvents!
+  hosts(
+    hostId: String = ""
+    distroId: String = ""
+    currentTaskId: String = ""
+    statuses: [String!] = []
+    startedBy: String = ""
+    sortBy: HostSortBy = STATUS
+    sortDir: SortDirection = ASC
+    page: Int = 0
+    limit: Int = 10
+  ): HostsResponse!
+  myHosts: [Host!]!
+  myVolumes: [Volume!]!
+  myPublicKeys: [PublicKey!]!
+  distros(onlySpawnable: Boolean!): [Distro]!
+  instanceTypes: [String!]!
+  distroTaskQueue(distroId: String!): [TaskQueueItem!]!
+  taskQueueDistros: [TaskQueueDistro!]!
+  buildBaron(taskId: String!, execution: Int!): BuildBaron!
+  bbGetCreatedTickets(taskId: String!): [JiraTicket!]!
+  mainlineCommits(options: MainlineCommitsOptions!): MainlineCommits
+}
+
+type RecentTaskLogs {
+  eventLogs: [TaskEventLogEntry!]!
+  taskLogs: [LogMessage!]!
+  systemLogs: [LogMessage!]!
+  agentLogs: [LogMessage!]!
+}
+
+enum RequiredStatus {
+  MUST_FAIL
+  MUST_FINISH
+  MUST_SUCCEED
+}
+
+type SearchReturnInfo {
+  issues: [JiraTicket!]!
+  search: String!
+  source: String!
+  featuresURL: String!
+}
+
+input SelectorInput {
+  type: String!
+  data: String!
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+input SortOrder {
+  Key: TaskSortCategory!
+  Direction: SortDirection!
+}
+
+type Source {
+  author: String!
+  time: Time!
+  requester: String!
+}
+
+type SpawnHostConfig {
+  unexpirableHostsPerUser: Int!
+  unexpirableVolumesPerUser: Int!
+  spawnHostsPerUser: Int!
+}
+
+input SpawnHostInput {
+  distroId: String!
+  region: String!
+  savePublicKey: Boolean!
+  publicKey: PublicKeyInput!
+  userDataScript: String
+  expiration: Time
+  noExpiration: Boolean!
+  setUpScript: String
+  isVirtualWorkStation: Boolean!
+  homeVolumeSize: Int
+  volumeId: String
+  taskId: String
+  useProjectSetupScript: Boolean
+  useTaskConfig: Boolean
+  spawnHostsStartedByTask: Boolean
+  taskSync: Boolean
+}
+
+enum SpawnHostStatusActions {
+  START
+  STOP
+  TERMINATE
+}
+
+input SpawnVolumeInput {
+  availabilityZone: String!
+  size: Int!
+  type: String!
+  expiration: Time
+  noExpiration: Boolean
+  host: String
+}
+
+type SpruceConfig {
+  ui: UIConfig
+  jira: JiraConfig
+  banner: String
+  bannerTheme: String
+  providers: CloudProviderConfig
+  spawnHost: SpawnHostConfig!
+}
+
+scalar StringMap
+
+input SubscriberInput {
+  type: String!
+  target: String!
+}
+
+input SubscriptionInput {
+  resource_type: String
+  trigger: String
+  selectors: [SelectorInput!]!
+  regex_selectors: [SelectorInput!]!
+  subscriber: SubscriberInput!
+  owner_type: String
+  owner: String
+  trigger_data: StringMap!
+}
+
+type Task {
+  aborted: Boolean!
+  abortInfo: AbortInfo
+  activated: Boolean!
+  activatedBy: String
+  activatedTime: Time
+  ami: String
+  annotation: Annotation
+  baseTask: Task
+  baseStatus: String
+  baseTaskMetadata: BaseTaskMetadata
+  blocked: Boolean!
+  buildId: String!
+  buildVariant: String!
+  buildVariantDisplayName: String
+  canAbort: Boolean!
+  canModifyAnnotation: Boolean!
+  canRestart: Boolean!
+  canSchedule: Boolean!
+  canSetPriority: Boolean!
+  canSync: Boolean!
+  canUnschedule: Boolean!
+  createTime: Time
+  details: TaskEndDetail
+  dispatchTime: Time
+  displayName: String!
+  displayOnly: Boolean
+  displayTask: Task
+  distroId: String!
+  estimatedStart: Duration
+  execution: Int!
+  executionTasks: [String!]
+  executionTasksFull: [Task!]
+  expectedDuration: Duration
+  failedTestCount: Int!
+  finishTime: Time
+  generatedBy: String
+  generatedByName: String
+  generateTask: Boolean
+  hostId: String
+  id: String!
+  ingestTime: Time
+  isPerfPluginEnabled: Boolean!
+  latestExecution: Int!
+  logs: TaskLogLinks!
+  minQueuePosition: Int!
+  patchMetadata: PatchMetadata!
+  patchNumber: Int
+  priority: Int
+  project: Project
+  projectId: String!
+  reliesOn: [Dependency!]!
+  requester: String!
+  restarts: Int
+  revision: String
+  scheduledTime: Time
+  spawnHostLink: String
+  startTime: Time
+  status: String!
+  taskGroup: String
+  taskGroupMaxHosts: Int
+  timeTaken: Duration
+  totalTestCount: Int!
+  version: String!
+}
+
+type TaskEndDetail {
+  status: String!
+  type: String!
+  description: String
+  timedOut: Boolean
+  timeoutType: String
+  oomTracker: OomTrackerInfo!
+}
+
+type TaskEventLogData {
+  hostId: String
+  jiraIssue: String
+  jiraLink: String
+  priority: Int
+  status: String
+  timestamp: Time
+  userId: String
+}
+
+type TaskEventLogEntry {
+  id: String!
+  resourceType: String!
+  processedAt: Time!
+  timestamp: Time
+  eventType: String
+  data: TaskEventLogData!
+  resourceId: String!
+}
+
+type TaskFiles {
+  fileCount: Int!
+  groupedFiles: [GroupedFiles!]!
+}
+
+type TaskInfo {
+  id: ID
+  name: String
+}
+
+type TaskLogLinks {
+  allLogLink: String
+  agentLogLink: String
+  systemLogLink: String
+  taskLogLink: String
+  eventLogLink: String
+}
+
+type TaskQueueDistro {
+  id: ID!
+  queueCount: Int!
+}
+
+type TaskQueueItem {
+  id: ID!
+  displayName: String!
+  project: String!
+  buildVariant: String!
+  expectedDuration: Duration!
+  priority: Int!
+  revision: String!
+  requester: TaskQueueItemType!
+  version: String!
+}
+
+enum TaskQueueItemType {
+  COMMIT
+  PATCH
+}
+
+type TaskResult {
+  id: ID!
+  execution: Int!
+  aborted: Boolean!
+  displayName: String!
+  version: String!
+  status: String!
+  baseStatus: String
+  baseTask: BaseTaskResult
+  buildVariant: String!
+  buildVariantDisplayName: String!
+  blocked: Boolean!
+  executionTasksFull: [Task!]
+}
+
+enum TaskSortCategory {
+  NAME
+  STATUS
+  BASE_STATUS
+  VARIANT
+}
+
+type TaskTestResult {
+  totalTestCount: Int!
+  filteredTestCount: Int!
+  testResults: [TestResult!]!
+}
+
+type TestLog {
+  htmlDisplayURL: String
+  rawDisplayURL: String
+}
+
+type TestResult {
+  id: String!
+  groupID: String
+  status: String!
+  baseStatus: String
+  testFile: String!
+  displayTestName: String
+  logs: TestLog!
+  exitCode: Int
+  startTime: Time
+  duration: Float
+  endTime: Time
+  taskId: String
+  execution: Int
+  logTestName: String
+  lineNum: Int
+}
+
+enum TestSortCategory {
+  BASE_STATUS
+  STATUS
+  DURATION
+  TEST_NAME
+}
+
+type TicketFields {
+  summary: String!
+  assigneeDisplayName: String
+  resolutionName: String
+  created: String!
+  updated: String!
+  status: JiraStatus!
+  assignedTeam: String
+}
+
+scalar Time
+
+type UIConfig {
+  userVoice: String
+}
+
+input UpdateVolumeInput {
+  expiration: Time
+  noExpiration: Boolean
+  name: String
+  volumeId: String!
+}
+
+type User {
+  displayName: String!
+  userId: String!
+  emailAddress: String!
+  patches(patchesInput: PatchesInput!): Patches!
+}
+
+type UserConfig {
+  user: String!
+  api_key: String!
+  api_server_host: String!
+  ui_server_host: String!
+}
+
+type UserPatches {
+  patches: [Patch!]!
+  filteredPatchCount: Int!
+}
+
+type UserSettings {
+  timezone: String
+  region: String
+  githubUser: GithubUser
+  slackUsername: String
+  notifications: Notifications
+  useSpruceOptions: UseSpruceOptions
+}
+
+input UserSettingsInput {
+  timezone: String
+  region: String
+  githubUser: GithubUserInput
+  slackUsername: String
+  notifications: NotificationsInput
+  useSpruceOptions: UseSpruceOptionsInput
+}
+
+type UseSpruceOptions {
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
+}
+
+input UseSpruceOptionsInput {
+  hasUsedSpruceBefore: Boolean
+  spruceV1: Boolean
+}
+
+type VariantTask {
+  name: String!
+  tasks: [String!]!
+}
+
+input VariantTasks {
+  variant: String!
+  tasks: [String!]!
+  displayTasks: [DisplayTask!]!
+}
+
+type Version {
+  id: String!
+  createTime: Time!
+  startTime: Time
+  finishTime: Time
+  message: String!
+  revision: String!
+  author: String!
+  status: String!
+  order: Int!
+  repo: String!
+  project: String!
+  branch: String!
+  requester: String!
+  activated: Boolean
+  buildVariants(options: BuildVariantOptions): [GroupedBuildVariant]
+}
+
+type Volume {
+  id: String!
+  displayName: String!
+  createdBy: String!
+  type: String!
+  availabilityZone: String!
+  size: Int!
+  expiration: Time
+  deviceName: String
+  hostID: String!
+  noExpiration: Boolean!
+  homeVolume: Boolean!
+  host: Host
+  creationTime: Time
+}
+
+input VolumeHost {
+  volumeId: String!
+  hostId: String!
+}
+

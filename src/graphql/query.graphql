@@ -1,0 +1,12 @@
+query PatchDetails($patch_id: String!) {
+  patch(id: $patch_id) {
+    id
+    description
+    author
+    alias
+    variantsTasks {
+      name
+      tasks
+    }
+  }
+}
