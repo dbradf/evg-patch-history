@@ -1,14 +1,17 @@
 use csv::WriterBuilder;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, error::Error};
+use std::{error::Error, sync::mpsc::{self, Receiver}, thread};
 use chrono::{Duration, Utc};
 use evg_api_rs::EvgClient;
 use graphql_client::GraphQLQuery;
 use futures::{StreamExt, future::join_all, pin_mut};
 
+const BATCH_SIZE: usize = 50;
+
 
 #[derive(Debug, Serialize)]
 pub struct Record {
+    pub id: String,
     pub author: String,
     pub alias: String,
     pub build_variant: String,
@@ -53,68 +56,100 @@ pub struct PatchDetails;
 #[tokio::main]
 async fn main() {
     let project = std::env::args().nth(1).expect("Expected project id");
+    let weeks_back = std::env::args().nth(2).unwrap_or_else(|| String::from("1")).parse::<i64>().expect("Weeks back should be an number");
+
     let evg_client = EvgClient::new().unwrap();
     let patch_stream = evg_client.stream_project_patches(&project, None).await;
     pin_mut!(patch_stream);
 
-    let lookback = Utc::now() - Duration::weeks(1);
-    // let lookback = Utc::now() - Duration::days(1);
-    let mut count = 0;
-    let mut patches_per_person = HashMap::new();
+    let (tx, rx) = mpsc::channel();
 
-    let mut patch_ids = vec![];
+    let handle = thread::spawn(move || {
+        patch_collector(rx);
+    });
+
+    let lookback = Utc::now() - Duration::weeks(weeks_back);
+    let mut count = 0;
+
     while let Some(patch) = patch_stream.next().await {
         if patch.create_time < lookback {
+            println!("Out of patches: {}", count);
+            tx.send(Action::End).unwrap();
             break;
         }
 
-        if let Some(ppp) = patches_per_person.get_mut(&patch.author) {
-            *ppp += 1;
-        } else {
-            patches_per_person.insert(patch.author.to_string(), 1);
+        if count % 25 == 0 {
+            println!("{}: {}", count, &patch.create_time);
         }
-        patch_ids.push(patch.patch_id.to_string());
 
-        println!("{}: {}: {}", patch.create_time.to_string(), patch.author, patch.description);
+        tx.send(Action::Patch(patch.patch_id)).unwrap();
+
         count += 1;
     }
 
-    println!("Patches: {}", count);
-    patches_per_person.iter().for_each(|(a,c)| println!("{}: {}", a, c));
-    println!("");
-
-    display_patches(&evg_client, patch_ids).await;
+    handle.join().unwrap();
 }
 
-async fn display_patches(evg_client: &EvgClient, patch_list: Vec<String>) {
-    let patches = join_all(patch_list.iter().map(|p| get_patch(evg_client, p))).await;
 
-    let mut build_variants = HashMap::new();
-    let mut build_counts = vec![];
+enum Action {
+    Patch(String),
+    End,
+}
+
+#[tokio::main]
+async fn patch_collector(rx: Receiver<Action>) {
+    let evg_client = EvgClient::new().unwrap();
+
+    let mut patch_ids = vec![];
     let mut records: Vec<Record> = vec![];
+    let mut count = 0;
+    while let Ok(event) = rx.recv() {
+        match event {
+            Action::Patch(patch_id) => {
+                patch_ids.push(patch_id);
+                if patch_ids.len() >= BATCH_SIZE {
+                    count += 1;
+                    println!("Sending batch: {}", count);
+                    let patches = join_all(patch_ids.iter().map(|p| get_patch(&evg_client, p))).await;
+                    records.append(&mut process_patches(&patches));
+                    patch_ids = vec![];
+                    println!("Batch completed: {}", count);
+                }
+            }
+            Action::End => {
+                if patch_ids.len() > 0 {
+                    let patches = join_all(patch_ids.iter().map(|p| get_patch(&evg_client, p))).await;
+                    records.append(&mut process_patches(&patches));
+                }
 
+                break;
+            }
+        }
+    }
+
+    let mut wtr = WriterBuilder::new().from_path("patches.csv").unwrap();
+    records.iter().for_each(|r| wtr.serialize(r).unwrap());
+    wtr.flush().unwrap();
+}
+
+fn process_patches(patches: &[Result<PatchResponse, Box<dyn Error>>]) -> Vec<Record> {
+    let mut records = vec![];
     for p in patches {
         match p {
             Ok(patch) => {
                 if patch.data.patch.alias == "__commit_queue" {
                     continue;
                 }
-                build_counts.push(patch.data.patch.variantsTasks.len());
-                for bv in patch.data.patch.variantsTasks {
+                for bv in &patch.data.patch.variantsTasks {
                     records.push(Record {
+                        id: patch.data.patch.id.to_string(),
                         author: patch.data.patch.author.to_string(),
                         alias: patch.data.patch.alias.to_string(),
                         build_variant: bv.name.to_string(),
                         tasks: bv.tasks.join("|"),
                         n_tasks: bv.tasks.len(),
                     });
-                    if let Some(b) = build_variants.get_mut(&bv.name) {
-                        *b += 1;
-                    } else {
-                        build_variants.insert(bv.name.to_string(), 1);
-                    }
                 }
-                // println!("{:#?}", &patch);
             }
             Err(e) => {
                 println!("{}", e);
@@ -122,13 +157,7 @@ async fn display_patches(evg_client: &EvgClient, patch_list: Vec<String>) {
         }
     }
 
-    let total_builds: usize = build_counts.iter().sum();
-    println!("Avg Build Variants: {}", total_builds / build_counts.len());
-    build_variants.iter().for_each(|(a,c)| println!("{}: {}", a, c));
-
-    let mut wtr = WriterBuilder::new().from_path("patches.csv").unwrap();
-    records.iter().for_each(|r| wtr.serialize(r).unwrap());
-    wtr.flush().unwrap();
+    records
 }
 
 async fn get_patch(client: &EvgClient, patch_id: &str) -> Result<PatchResponse, Box<dyn Error>> {
