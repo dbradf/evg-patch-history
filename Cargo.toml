@@ -13,4 +13,5 @@ evg-api-rs = { git = "https://github.com/dbradf/evg-api-rs.git" }
 futures = "0.3"
 graphql_client = { version = "0.9" }
 serde = { version = "1", features = ["derive"] }
+structopt = "0.3"
 tokio = { version = "1", features = ["full"] }
