@@ -1,11 +1,15 @@
 use csv::WriterBuilder;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{error::Error, sync::mpsc::{self, Receiver}, thread};
 use structopt::StructOpt;
 use chrono::{Duration, Utc};
 use evg_api_rs::EvgClient;
-use graphql_client::GraphQLQuery;
 use futures::{StreamExt, future::join_all, pin_mut};
+use cynic::{QueryBuilder, QueryFragment};
+
+mod schema {
+    cynic::use_schema!("src/graphql/schema.graphql");
+}
 
 #[derive(Debug, Serialize)]
 pub struct Record {
@@ -17,40 +21,40 @@ pub struct Record {
     pub n_tasks: usize,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct VariantsTasks {
+#[derive(QueryFragment, Debug)]
+#[cynic(schema_path = "src/graphql/schema.graphql")]
+pub struct VariantTask {
     pub name: String,
     pub tasks: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct APatch {
-    pub id: String,
+#[derive(QueryFragment, Debug)]
+#[cynic(
+    schema_path = "src/graphql/schema.graphql"
+)]
+pub struct Patch {
+    pub id: cynic::Id,
     pub description: String,
     pub author: String,
-    pub alias: String,
-    #[serde(rename = "variantsTasks")]
-    pub variants_tasks: Vec<VariantsTasks>,
+    pub alias: Option<String>,
+    pub variants_tasks: Vec<Option<VariantTask>>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct PatchDets {
-    pub patch: APatch,
+#[derive(cynic::FragmentArguments)]
+struct PatchArguments {
+    id: String,
 }
 
-
-#[derive(Debug, Deserialize)]
-pub struct PatchResponse {
-    pub data: PatchDets,
-}
-
-#[derive(GraphQLQuery)]
-#[graphql(
+#[derive(QueryFragment, Debug)]
+#[cynic(
+    graphql_type = "Query",
     schema_path = "src/graphql/schema.graphql",
-    query_path = "src/graphql/query.graphql",
-    response_derives = "Debug",
+    argument_struct = "PatchArguments"
 )]
-pub struct PatchDetails;
+struct PatchQuery {
+    #[arguments(id = &args.id)]
+    patch: Patch,
+}
 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Generate a CSV of patches run on the given projects.")]
@@ -152,23 +156,25 @@ async fn patch_collector(rx: Receiver<Action>, batch_size: usize, output_file: &
     wtr.flush().unwrap();
 }
 
-fn process_patches(patches: &[Result<PatchResponse, Box<dyn Error>>]) -> Vec<Record> {
+fn process_patches(patches: &[Result<PatchQuery, Box<dyn Error>>]) -> Vec<Record> {
     let mut records = vec![];
     for p in patches {
         match p {
             Ok(patch) => {
-                if patch.data.patch.alias == "__commit_queue" {
+                if patch.patch.alias == Some("__commit_queue".to_string()) {
                     continue;
                 }
-                for bv in &patch.data.patch.variants_tasks {
-                    records.push(Record {
-                        id: patch.data.patch.id.to_string(),
-                        author: patch.data.patch.author.to_string(),
-                        alias: patch.data.patch.alias.to_string(),
-                        build_variant: bv.name.to_string(),
-                        tasks: bv.tasks.join("|"),
-                        n_tasks: bv.tasks.len(),
-                    });
+                for bv in &patch.patch.variants_tasks {
+                    if let Some(vt) = bv {
+                        records.push(Record {
+                            id: String::from(&patch.patch.id.clone().into_inner()),
+                            author: patch.patch.author.to_string(),
+                            alias: patch.patch.alias.clone().unwrap_or(String::from("")),
+                            build_variant: vt.name.to_string(),
+                            tasks: vt.tasks.join("|"),
+                            n_tasks: vt.tasks.len(),
+                        });
+                    }
                 }
             }
             Err(e) => {
@@ -180,14 +186,14 @@ fn process_patches(patches: &[Result<PatchResponse, Box<dyn Error>>]) -> Vec<Rec
     records
 }
 
-async fn get_patch(client: &EvgClient, patch_id: &str) -> Result<PatchResponse, Box<dyn Error>> {
-    let variables = patch_details::Variables {
-        patch_id: patch_id.to_string(),
-    };
-    let request_body = PatchDetails::build_query(variables);
-
+async fn get_patch(client: &EvgClient, patch_id: &str) -> Result<PatchQuery, Box<dyn Error>> {
+    let operation = PatchQuery::build(
+        PatchArguments {
+            id: patch_id.into(),
+        }
+    );
     let url = "https://evergreen.mongodb.com/graphql/query";
-    let res = client.client.post(url).json(&request_body).send().await?;
-    let response_body = res.json().await;
-    Ok(response_body?)
+    let res = client.client.post(url).json(&operation).send().await?;
+    let response_body = operation.decode_response(res.json().await?)?;
+    Ok(response_body.data.unwrap())
 }
